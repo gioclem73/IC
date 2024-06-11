@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Capotreno BFF</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous"
+    />
+    <link
+      href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/ui-lightness/jquery-ui.css"
+      rel="stylesheet"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script>
+      $.datepicker.regional["it"] = {
+        closeText: "Chiudi",
+        currentText: "Oggi",
+        monthNames: [
+          "Gennaio",
+          "Febbraio",
+          "Marzo",
+          "Aprile",
+          "Maggio",
+          "Giugno",
+          "Luglio",
+          "Agosto",
+          "Settembre",
+          "Ottobre",
+          "Novembre",
+          "Dicembre"
+        ],
+        monthNamesShort: [
+          "Gen",
+          "Feb",
+          "Mar",
+          "Apr",
+          "Mag",
+          "Giu",
+          "Lug",
+          "Ago",
+          "Set",
+          "Ott",
+          "Nov",
+          "Dic"
+        ],
+        dayNames: [
+          "Domenica",
+          "Luned&#236",
+          "Marted&#236",
+          "Mercoled&#236",
+          "Gioved&#236",
+          "Venerd&#236",
+          "Sabato"
+        ],
+        dayNamesShort: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
+        dayNamesMin: ["Do", "Lu", "Ma", "Me", "Gio", "Ve", "Sa"],
+        dateFormat: "dd/mm/yy"
+      };
+
+      $.datepicker.setDefaults($.datepicker.regional["it"]);
+    </script>
+    <style>
+      #loading {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.8);
+      }
+      .loader-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      /* HTML: <div class="loader"></div> */
+      .loader {
+        width: 60px;
+        height: 50px;
+        --m: no-repeat linear-gradient(90deg, #000 70%, #0000 0);
+        -webkit-mask: var(--m) calc(0 * 100% / 4) 100% / calc(100% / 5)
+            calc(1 * 100% / 5),
+          var(--m) calc(1 * 100% / 4) 100% / calc(100% / 5) calc(2 * 100% / 5),
+          var(--m) calc(2 * 100% / 4) 100% / calc(100% / 5) calc(3 * 100% / 5),
+          var(--m) calc(3 * 100% / 4) 100% / calc(100% / 5) calc(4 * 100% / 5),
+          var(--m) calc(4 * 100% / 4) 100% / calc(100% / 5) calc(5 * 100% / 5);
+        background: linear-gradient(#514b82 0 0) left/0% 100% no-repeat #ddd;
+        animation: l14 2s infinite steps(6);
+      }
+      @keyframes l14 {
+        100% {
+          background-size: 120% 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container p-4">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="form-group mt-1">
+            <label for="plant_ctrl">Impianto:</label>
+            <input type="text" id="plant_ctrl" class="form-control" />
+          </div>
+          <div class="form-group mt-1">
+            <label for="date_ctrl">Data:</label>
+            <input type="text" id="date_ctrl" class="form-control" />
+          </div>
+          <div class="form-group mt-1">
+            <label for="train_ctrl">Treno:</label>
+            <input type="text" id="train_ctrl" class="form-control" readonly />
+          </div>
+          <div class="form-group mt-1">
+            <label for="trait_ctrl">Tratta:</label>
+            <input type="text" id="trait_ctrl" class="form-control" readonly />
+          </div>
+          <div class="form-group mt-1">
+            <label for="car_ctrl">Vettura:</label>
+            <input type="text" id="car_ctrl" class="form-control" readonly />
+          </div>
+          <br />
+          <div class="d-grid gap-2 mt-1">
+            <button class="btn btn-primary" type="button" id="reset">
+              Reset
+            </button>
+          </div>
+          <div class="d-grid gap-2">
+            <button
+              class="btn btn-primary mt-1"
+              type="button"
+              id="delete-cache"
+            >
+              Cancella cache e ricarica
+            </button>
+          </div>
+          <br />
+          <div id="result"></div>
+        </div>
+      </div>
+    </div>
+    <div id="loading">
+      <div class="loader-container">
+        <div class="loader"></div>
+      </div>
+    </div>
+
+    <script>
+      $(function () {
+        const spreadsheetId = "17v-LSaxTEABlf4JqnkNKHnoT3_kGkv_Jm4qX9eoRs5o";
+        const range = "Dati!A:H";
+        const api_key = "AIzaSyDJ2SNtAnOzvG_rc1oyo4vHI4DLh-8I0bk";
+
+        // DO NOT EDIT BELOW THIS LINE
+        const initDataSource = async () => {
+          if (
+            localStorage.getItem("dataSource") &&
+            localStorage.getItem("dataSourceSavedAt")
+          ) {
+            const date = new Date(localStorage.getItem("dataSourceSavedAt"));
+            const now = new Date();
+            if (now - date < 1000 * 60 * 60 * 24) {
+              return JSON.parse(localStorage.getItem("dataSource"));
+            }
+          }
+          const data = await $.ajax({
+            url: `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${api_key}`,
+            dataType: "json"
+          });
+
+          const dataSource = data.values.slice(1).map((item) => {
+            let [date, plant, train, trait, car, pnr, carriage, seats] = item;
+            if (/^\d{2}-\w{3}$/.test(date)) {
+              let [day, month] = date.split("-");
+              let months = [
+                "gen",
+                "feb",
+                "mar",
+                "apr",
+                "mag",
+                "giu",
+                "lug",
+                "ago",
+                "set",
+                "ott",
+                "nov",
+                "dic"
+              ];
+              let index = months.indexOf(month);
+              let m = (index + 1).toString().padStart(2, "0");
+              date = `${day}/${m}/2024`;
+            }
+            if (/^\d{2}\/\d{2}\/\d{2}$/.test(date)) {
+              let [d, m, y] = date.split("/");
+              date = `${d}/${m}/20${y}`;
+            }
+            return [date, plant, train, trait, car, pnr, carriage, seats];
+          });
+
+          localStorage.setItem("dataSource", JSON.stringify(dataSource));
+          localStorage.setItem("dataSourceSavedAt", new Date());
+          return dataSource;
+        };
+
+        document.querySelector("#loading").style.display = "block";
+
+        initDataSource().then((dataSource) => {
+          document.querySelector("#loading").style.display = "none";
+          let filteredDataSource = dataSource.slice();
+          let impiantiDataSource = dataSource
+            .map((item) => item[1])
+            .filter((item, index, self) => self.indexOf(item) === index);
+
+          $("#date_ctrl").datepicker({
+            defaultDate: new Date()
+          });
+          $("#date_ctrl").on("change", function () {
+            if (!$(this).val()) {
+              $("#train_ctrl").val("").prop("readonly", true);
+              $("#result").empty();
+              return;
+            }
+            $("#train_ctrl").prop("readonly", false);
+            const date = $("#date_ctrl").val();
+            const plant = $("#plant_ctrl").val();
+            filteredDataSource = dataSource.filter(
+              (item) => item[0] === date && item[1] === plant
+            );
+            $("#train_ctrl").autocomplete("search", "");
+          });
+          $("#plant_ctrl").autocomplete({
+            source: function (request, response) {
+              let valid = impiantiDataSource.filter(
+                (item) =>
+                  !request.term ||
+                  item.toLowerCase().startsWith(request.term.toLowerCase())
+              );
+              valid.sort((a, b) => a.localeCompare(b));
+              valid = [...new Set(valid)];
+              response(valid);
+            },
+            minLength: 0,
+            select: function (event, ui) {
+              $("#date_ctrl").val("").prop("readonly", false);
+              $("#train_ctrl").val("").prop("readonly", true);
+              $("#trait_ctrl").val("").prop("readonly", true);
+              $("#car_ctrl").val("").prop("readonly", true);
+              $("#result").empty();
+            }
+          });
+          $("#plant_ctrl").autocomplete("search", "");
+          $("#train_ctrl").autocomplete({
+            source: function (request, response) {
+              let valid = filteredDataSource
+                .filter(
+                  (item) =>
+                    !request.term ||
+                    item[2].toLowerCase().startsWith(request.term.toLowerCase())
+                )
+                .map((item) => item[2]);
+              valid.sort((a, b) => a.localeCompare(b));
+              valid = [...new Set(valid)];
+              response(valid);
+            },
+            minLength: 0,
+            select: function (event, ui) {
+              $("#trait_ctrl").val("").prop("readonly", false);
+              $("#car_ctrl").val("").prop("readonly", true);
+              setTimeout(() => $("#trait_ctrl").autocomplete("search", ""), 0);
+            }
+          });
+          $("#trait_ctrl").autocomplete({
+            source: function (request, response) {
+              let train = $("#train_ctrl").val();
+              let valid = filteredDataSource
+                .filter(
+                  (item) =>
+                    item[2] === train &&
+                    (!request.term ||
+                      item[3]
+                        .toLowerCase()
+                        .includes(request.term.toLowerCase()))
+                )
+                .map((item) => item[3]);
+              valid.sort((a, b) => a.localeCompare(b));
+              valid = [...new Set(valid)];
+              response(valid);
+            },
+            minLength: 0,
+            select: function (event, ui) {
+              $("#car_ctrl").val("").prop("readonly", false);
+              setTimeout(() => $("#car_ctrl").autocomplete("search", ""), 0);
+            }
+          });
+          $("#car_ctrl").autocomplete({
+            source: function (request, response) {
+              let train = $("#train_ctrl").val();
+              let trait = $("#trait_ctrl").val();
+              let valid = filteredDataSource
+                .filter(
+                  (item) =>
+                    item[2] === train &&
+                    item[3] === trait &&
+                    (!request.term ||
+                      item[4]
+                        .toLowerCase()
+                        .startsWith(request.term.toLowerCase()))
+                )
+                .map((item) => item[4]);
+              valid.sort((a, b) => a.localeCompare(b));
+              valid = [...new Set(valid)];
+              response(valid);
+            },
+            minLength: 0,
+            select: function (event, ui) {
+              let train = $("#train_ctrl").val();
+              let trait = $("#trait_ctrl").val();
+              let car = ui.item.value;
+              let data = filteredDataSource.filter(
+                (item) =>
+                  item[2] === train && item[3] === trait && item[4] === car
+              );
+              let html =
+                '<table class="table table-striped"><thead><tr><th>PNR</th><th>Carrozza</th><th>Posti</th></tr></thead><tbody>';
+              data.forEach((item) => {
+                html += `<tr><td>${item[5]}</td><td>${item[6]}</td><td>${item[7]}</td></tr>`;
+              });
+              html += "</tbody></table>";
+              $("#result").html(html);
+            }
+          });
+          $("#reset").on("click", function () {
+            $("#plant_ctrl").val("").prop("readonly", false);
+            $("#date_ctrl").val("").prop("readonly", false);
+            $("#train_ctrl").val("").prop("readonly", true);
+            $("#trait_ctrl").val("").prop("readonly", true);
+            $("#car_ctrl").val("").prop("readonly", true);
+            $("#result").empty();
+            $("#plant_ctrl").autocomplete("search", "");
+          });
+          $("#delete-cache").on("click", function () {
+            if (
+              !confirm(
+                "Sei sicuro di voler cancellare la cache e ricaricare i dati?"
+              )
+            )
+              return;
+            localStorage.removeItem("dataSource");
+            localStorage.removeItem("dataSourceSavedAt");
+            location.reload();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
